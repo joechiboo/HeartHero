@@ -22,7 +22,11 @@ export const useHeartRateStore = defineStore('heartRate', {
 
     // Debug
     debugLogs: [],
-    showDebug: false
+    showDebug: false,
+
+    // 模擬模式
+    isSimulationMode: false,
+    simulationTimer: null
   }),
 
   getters: {
@@ -330,6 +334,65 @@ export const useHeartRateStore = defineStore('heartRate', {
     // 切換 Debug 模式
     toggleDebug() {
       this.showDebug = !this.showDebug
+    },
+
+    // 啟動模擬模式
+    startSimulation() {
+      this.isSimulationMode = true
+      this.isConnected = true
+      this.isContactDetected = true
+      this.batteryLevel = 85
+      this.addDebugLog('success', '✅ 已啟動模擬模式')
+
+      // 模擬心率變化（每秒更新一次）
+      let baseHeartRate = 70
+      let trend = 1 // 1: 上升, -1: 下降
+
+      this.simulationTimer = setInterval(() => {
+        // 隨機波動 ±5
+        const randomChange = Math.floor(Math.random() * 11) - 5
+        baseHeartRate += randomChange * 0.5
+
+        // 趨勢變化
+        baseHeartRate += trend
+
+        // 限制範圍（60-180）
+        if (baseHeartRate > 180) {
+          baseHeartRate = 180
+          trend = -1
+        } else if (baseHeartRate < 60) {
+          baseHeartRate = 60
+          trend = 1
+        }
+
+        // 隨機改變趨勢
+        if (Math.random() < 0.1) {
+          trend = Math.random() < 0.5 ? 1 : -1
+        }
+
+        // 更新心率
+        this.currentHeartRate = Math.round(baseHeartRate)
+
+        // 記錄歷史
+        this.addToHistory(this.currentHeartRate)
+
+        // Debug log
+        if (this.showDebug) {
+          this.addDebugLog('info', `模擬心率: ${this.currentHeartRate} BPM | 區間: ${this.currentZoneName}`)
+        }
+      }, 1000)
+    },
+
+    // 停止模擬模式
+    stopSimulation() {
+      if (this.simulationTimer) {
+        clearInterval(this.simulationTimer)
+        this.simulationTimer = null
+      }
+      this.isSimulationMode = false
+      this.isConnected = false
+      this.currentHeartRate = 0
+      this.addDebugLog('info', '已停止模擬模式')
     }
   }
 })

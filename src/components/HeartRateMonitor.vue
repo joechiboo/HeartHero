@@ -3,22 +3,31 @@
        :class="{ 'ring-4 ring-red-500 animate-pulse': isDanger }">
 
     <!-- 連接按鈕 -->
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex justify-between items-center mb-6 gap-2">
       <button
         @click="handleConnect"
         :disabled="heartRateStore.isConnected"
-        class="px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="flex-1 px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         :class="heartRateStore.isConnected
           ? 'bg-green-500 text-white'
           : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'"
       >
         <span v-if="!heartRateStore.isConnected">🔗 連接心率帶</span>
+        <span v-else-if="heartRateStore.isSimulationMode">🎮 模擬模式</span>
         <span v-else>✅ 已連接</span>
       </button>
 
       <button
+        v-if="!heartRateStore.isConnected"
+        @click="heartRateStore.startSimulation()"
+        class="px-6 py-3 rounded-lg font-semibold bg-purple-500 text-white hover:bg-purple-600 active:scale-95 transition-all duration-200"
+      >
+        🎮 模擬模式
+      </button>
+
+      <button
         v-if="heartRateStore.isConnected"
-        @click="heartRateStore.disconnect()"
+        @click="handleDisconnect"
         class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
       >
         斷開
@@ -226,6 +235,15 @@ const handleConnect = async () => {
     await heartRateStore.connect()
   } catch (error) {
     alert(`連接失敗: ${error.message}`)
+  }
+}
+
+// 斷開處理
+const handleDisconnect = () => {
+  if (heartRateStore.isSimulationMode) {
+    heartRateStore.stopSimulation()
+  } else {
+    heartRateStore.disconnect()
   }
 }
 

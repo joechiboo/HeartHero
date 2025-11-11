@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 新增心率模擬模式與 GitHub Pages 部署設定\n\n- 新增心率模擬模式，可在沒有實體心率帶時測試功能\n- 模擬心率會在 60-180 BPM 範圍內真實波動\n- 設定 GitHub Pages 自動部署流程\n- 配置 Vite base 路徑以支援 GitHub Pages\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(npm run dev:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

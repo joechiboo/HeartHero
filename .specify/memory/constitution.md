@@ -51,21 +51,47 @@
 ## 技術限制
 
 ### 必要技術棧
-- **前端**:
+- **前端框架**:
+  - Vue 3 (Composition API)
+  - Pinia (狀態管理)
+  - Vite (建置工具)
+
+- **核心技術**:
   - HTML5
   - CSS3
   - JavaScript (ES6+)
-  - [待定:框架選擇 - React/Vue/Vanilla JS]
+  - Web Bluetooth API
 
-- **後端**(如需要):
-  - [待定:Node.js/Python/其他]
+- **UI/樣式**:
+  - Tailwind CSS (工具優先的 CSS 框架)
+  - 響應式設計原則
+
+- **後端**:
+  - 無需後端（純前端應用）
 
 - **資料儲存**:
-  - [待定:LocalStorage/IndexedDB/後端資料庫]
+  - LocalStorage (心率歷史記錄)
+  - IndexedDB (未來擴展使用)
+
+- **硬體整合**:
+  - BLE Heart Rate Profile (標準藍牙心率服務)
+  - 推薦設備：Garmin HRM-Dual, Polar H10, Wahoo TICKR
 
 ### 瀏覽器支援
-- 現代瀏覽器(Chrome、Firefox、Safari、Edge)最新兩個版本
-- 行動瀏覽器(iOS Safari、Chrome Mobile)
+- **桌面**:
+  - Chrome 56+ (完整支援 Web Bluetooth)
+  - Edge 79+ (完整支援 Web Bluetooth)
+  - ❌ Firefox (不支援 Web Bluetooth)
+  - ❌ Safari (不支援 Web Bluetooth)
+
+- **行動裝置**:
+  - Chrome Mobile (Android)
+  - ❌ iOS Safari (Apple 未實作 Web Bluetooth API)
+
+- **重要限制**:
+  - 必須使用 HTTPS 協議
+  - 必須由用戶手勢觸發連接
+  - 不支援後台運行
 
 ### 裝置支援
 - 桌面裝置(1024px 以上)
@@ -140,14 +166,36 @@
 - 公開 API 需有完整文檔
 - 設定檔需有說明
 
-## 待決定事項
+## 技術決策記錄
 
-- [ ] 前端框架選擇
-- [ ] 是否需要後端
-- [ ] 資料儲存方案
-- [ ] 第三方服務整合
-- [ ] CI/CD 設定
-- [ ] 部署平台選擇
+### 已決定
+- ✅ **前端框架**: Vue 3 + Pinia（成熟的生態系統，響應式設計）
+- ✅ **藍牙協議**: BLE Heart Rate Profile（標準協議，廣泛支援）
+- ✅ **無後端設計**: 純前端應用（降低複雜度，提高隱私性）
+- ✅ **資料儲存**: LocalStorage（簡單、即時、本地優先）
+- ✅ **樣式方案**: Tailwind CSS（快速開發、一致性高）
+
+### 待決定事項
+- [ ] CI/CD 設定（GitHub Actions）
+- [ ] 部署平台選擇（GitHub Pages / Vercel / Netlify）
+- [ ] PWA 支援（離線功能、安裝到桌面）
+- [ ] 多語言支援（i18n）
+- [ ] 數據導出格式（JSON / CSV / GPX）
+
+### 技術限制說明
+1. **Web Bluetooth 限制**:
+   - 不支援 iOS Safari（Apple 政策限制）
+   - 需要 HTTPS（安全性要求）
+   - 無法後台運行（瀏覽器限制）
+
+2. **裝置相容性**:
+   - 支援標準 BLE Heart Rate Profile 設備
+   - 不支援專屬協議設備（如小米手環）
+
+3. **隱私優先**:
+   - 所有數據僅存於本地
+   - 不上傳至任何伺服器
+   - 每日自動清除歷史（可選）
 
 ---
 

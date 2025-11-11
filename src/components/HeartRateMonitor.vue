@@ -3,7 +3,7 @@
        :class="{ 'ring-4 ring-red-500 animate-pulse': isDanger }">
 
     <!-- 連接按鈕 -->
-    <div class="flex justify-between items-center mb-6 gap-2">
+    <div class="flex justify-between items-center mb-4 gap-2">
       <button
         @click="handleConnect"
         :disabled="heartRateStore.isConnected"
@@ -13,16 +13,8 @@
           : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'"
       >
         <span v-if="!heartRateStore.isConnected">🔗 連接心率帶</span>
-        <span v-else-if="heartRateStore.isSimulationMode">🎮 模擬模式</span>
+        <span v-else-if="heartRateStore.isSimulationMode">🎮 模擬模式中</span>
         <span v-else>✅ 已連接</span>
-      </button>
-
-      <button
-        v-if="!heartRateStore.isConnected"
-        @click="heartRateStore.startSimulation()"
-        class="px-6 py-3 rounded-lg font-semibold bg-purple-500 text-white hover:bg-purple-600 active:scale-95 transition-all duration-200"
-      >
-        🎮 模擬模式
       </button>
 
       <button
@@ -32,6 +24,61 @@
       >
         斷開
       </button>
+    </div>
+
+    <!-- 測試功能按鈕組 -->
+    <div class="flex justify-center gap-2 mb-4">
+      <button
+        v-if="!heartRateStore.isConnected"
+        @click="heartRateStore.startSimulation()"
+        class="px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-xs"
+      >
+        🎮 測試
+      </button>
+
+      <button
+        @click="heartRateStore.toggleDebug()"
+        class="px-3 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors text-xs"
+      >
+        {{ heartRateStore.showDebug ? '隱藏' : '🐛' }} Debug
+      </button>
+    </div>
+
+    <!-- Debug 面板（始終可用） -->
+    <div v-if="heartRateStore.showDebug" class="mb-4 space-y-4">
+      <!-- 連線狀態資訊 -->
+      <div class="p-4 bg-gray-100 rounded-lg text-xs space-y-2">
+        <div class="font-bold text-gray-700 mb-2">🔗 連線狀態</div>
+        <div class="grid grid-cols-2 gap-2 text-gray-600">
+          <div>連線狀態: <span class="font-semibold" :class="heartRateStore.isConnected ? 'text-green-600' : 'text-red-600'">{{ heartRateStore.isConnected ? '已連線' : '未連線' }}</span></div>
+          <div>模式: <span class="font-semibold">{{ heartRateStore.isSimulationMode ? '模擬' : '實體設備' }}</span></div>
+          <div v-if="heartRateStore.device">設備名稱: <span class="font-semibold">{{ heartRateStore.device.name || '未命名' }}</span></div>
+          <div v-if="heartRateStore.device">設備 ID: <span class="font-semibold text-xs">{{ heartRateStore.device.id }}</span></div>
+          <div>傳感器: <span class="font-semibold" :class="heartRateStore.isContactDetected ? 'text-green-600' : 'text-orange-600'">{{ heartRateStore.isContactDetected ? '接觸良好' : '未接觸' }}</span></div>
+          <div v-if="heartRateStore.batteryLevel">電量: <span class="font-semibold">{{ heartRateStore.batteryLevel }}%</span></div>
+        </div>
+      </div>
+
+      <!-- Debug 控制台 -->
+      <div class="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs max-h-64 overflow-y-auto font-mono">
+        <div class="font-bold mb-2 text-green-400">&gt; Debug Console</div>
+        <div v-if="heartRateStore.debugLogs.length === 0" class="text-gray-500">等待操作日誌...</div>
+        <div v-for="(log, index) in heartRateStore.debugLogs" :key="index" class="mb-1">
+          <span class="text-gray-500">{{ log.timestamp }}</span>
+          <span
+            class="ml-2 px-1 py-0.5 rounded text-xs"
+            :class="{
+              'bg-blue-600': log.type === 'info',
+              'bg-green-600': log.type === 'success',
+              'bg-red-600': log.type === 'error',
+              'bg-yellow-600': log.type === 'warning'
+            }"
+          >
+            {{ log.type.toUpperCase() }}
+          </span>
+          <span class="ml-2">{{ log.message }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- 心率顯示區域 -->
@@ -149,35 +196,10 @@
       <div class="flex gap-2 mt-4">
         <button
           @click="heartRateStore.clearHistory()"
-          class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+          class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
         >
           清除記錄
         </button>
-        <button
-          @click="heartRateStore.toggleDebug()"
-          class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-        >
-          {{ heartRateStore.showDebug ? '隱藏' : '顯示' }} Debug
-        </button>
-      </div>
-
-      <!-- Debug 日誌 -->
-      <div v-if="heartRateStore.showDebug" class="mt-4 p-4 bg-gray-900 text-gray-100 rounded-lg text-xs max-h-64 overflow-y-auto">
-        <div v-for="(log, index) in heartRateStore.debugLogs" :key="index" class="mb-1">
-          <span class="text-gray-400">{{ log.timestamp }}</span>
-          <span
-            class="ml-2 px-2 py-0.5 rounded"
-            :class="{
-              'bg-blue-600': log.type === 'info',
-              'bg-green-600': log.type === 'success',
-              'bg-red-600': log.type === 'error',
-              'bg-yellow-600': log.type === 'warning'
-            }"
-          >
-            {{ log.type }}
-          </span>
-          <span class="ml-2">{{ log.message }}</span>
-        </div>
       </div>
     </div>
 

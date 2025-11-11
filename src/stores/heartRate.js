@@ -33,51 +33,51 @@ export const useHeartRateStore = defineStore('heartRate', {
     // 計算最大心率（220 - 年齡）
     maxHeartRate: (state) => 220 - state.userAge,
 
-    // 心率區間定義
+    // 心率區間定義（調整為更舒適的固定範圍）
     heartRateZones() {
-      const maxHR = this.maxHeartRate
+      // 使用固定的心率值，更適合一般運動強度
       return {
         rest: {
           min: 0,
-          max: maxHR * 0.5,
+          max: 60,
           color: '#6b7280',
           bgColor: 'bg-hr-rest',
           name: '休息'
         },
         warmup: {
-          min: maxHR * 0.5,
-          max: maxHR * 0.6,
+          min: 60,
+          max: 80,
           color: '#3b82f6',
           bgColor: 'bg-hr-warmup',
-          name: '暖身'
+          name: '輕鬆'
         },
         fatBurn: {
-          min: maxHR * 0.6,
-          max: maxHR * 0.7,
+          min: 80,
+          max: 100,
           color: '#10b981',
           bgColor: 'bg-hr-fatburn',
-          name: '燃脂'
+          name: '適中'
         },
         cardio: {
-          min: maxHR * 0.7,
-          max: maxHR * 0.8,
+          min: 100,
+          max: 120,
           color: '#f59e0b',
           bgColor: 'bg-hr-cardio',
           name: '有氧'
         },
         peak: {
-          min: maxHR * 0.8,
-          max: maxHR * 0.9,
+          min: 120,
+          max: 140,
           color: '#ef4444',
           bgColor: 'bg-hr-peak',
           name: '高強度'
         },
         danger: {
-          min: maxHR * 0.9,
-          max: maxHR * 1.1,
+          min: 140,
+          max: 200,
           color: '#dc2626',
           bgColor: 'bg-hr-danger',
-          name: '危險'
+          name: '極限'
         }
       }
     },
@@ -117,40 +117,61 @@ export const useHeartRateStore = defineStore('heartRate', {
     async connect() {
       try {
         this.addDebugLog('info', '開始搜尋藍牙設備...')
+        this.addDebugLog('info', `瀏覽器: ${navigator.userAgent.split(' ').slice(-2).join(' ')}`)
 
         // 檢查瀏覽器支援
         if (!navigator.bluetooth) {
           throw new Error('此瀏覽器不支援 Web Bluetooth API')
         }
 
-        // 請求設備
+        // 請求設備 - 使用更寬鬆的配置
         this.device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: ['heart_rate'] }],
-          optionalServices: ['battery_service']
+          filters: [
+            { services: ['heart_rate'] },
+            { namePrefix: 'HRM' }  // 添加設備名稱前綴過濾
+          ],
+          optionalServices: ['battery_service', 'device_information']
         })
 
-        this.addDebugLog('success', `已選擇設備: ${this.device.name}`)
+        this.addDebugLog('success', `已選擇設備: ${this.device.name || '未命名設備'}`)
+        this.addDebugLog('info', `設備 ID: ${this.device.id}`)
 
         // 監聽斷開事件
         this.device.addEventListener('gattserverdisconnected', this.handleDisconnect)
 
         // 連接 GATT Server
+        this.addDebugLog('info', '正在連接 GATT Server...')
         this.server = await this.device.gatt.connect()
         this.addDebugLog('success', '已連接 GATT Server')
 
         // 獲取 Heart Rate Service
+        this.addDebugLog('info', '正在獲取 Heart Rate Service...')
         const service = await this.server.getPrimaryService('heart_rate')
         this.addDebugLog('success', '已獲取 Heart Rate Service')
 
         // 獲取 Heart Rate Measurement Characteristic
-        const characteristic = await service.getCharacteristic('heart_rate_measurement')
+        this.addDebugLog('info', '正在獲取 Heart Rate Measurement 特徵值...')
+        let characteristic
+        try {
+          characteristic = await service.getCharacteristic('heart_rate_measurement')
+          this.addDebugLog('success', '已獲取特徵值')
+        } catch (err) {
+          this.addDebugLog('error', `獲取特徵值失敗: ${err.message}`)
+          throw err
+        }
 
         // 啟動通知
-        await characteristic.startNotifications()
-        this.addDebugLog('success', '已啟動心率通知')
+        this.addDebugLog('info', '正在啟動心率通知...')
+        try {
+          await characteristic.startNotifications()
+          this.addDebugLog('success', '已啟動心率通知')
+        } catch (err) {
+          this.addDebugLog('error', `啟動通知失敗: ${err.message}`)
+          throw err
+        }
 
         // 監聽心率變化
-        characteristic.addEventListener('characteristicvaluechanged', this.handleHeartRateChange)
+        characteristic.addEventListener('characteristicvaluechanged', this.handleHeartRateChange.bind(this))
 
         this.isConnected = true
         this.addDebugLog('success', '✅ 連接成功！')
@@ -160,6 +181,25 @@ export const useHeartRateStore = defineStore('heartRate', {
 
       } catch (error) {
         this.addDebugLog('error', `連接失敗: ${error.message}`)
+
+        // 針對不同錯誤類型提供解決方案
+        if (error.message.includes('Authentication failed')) {
+          this.addDebugLog('warning', '🔐 認證失敗 - 可能的解決方案：')
+          this.addDebugLog('info', '1. 確認心率帶已開啟並在範圍內')
+          this.addDebugLog('info', '2. 在 Windows 設定 > 藍牙與裝置 中移除舊的配對')
+          this.addDebugLog('info', '3. 重新配對設備（可能需要輸入 PIN 碼）')
+          this.addDebugLog('info', '4. 部分設備需要先在系統藍牙設定中配對')
+        } else if (error.message.includes('GATT Server is disconnected')) {
+          this.addDebugLog('warning', '📡 連接中斷 - 請檢查：')
+          this.addDebugLog('info', '1. 心率帶電池是否充足')
+          this.addDebugLog('info', '2. 距離是否太遠（建議 < 5 公尺）')
+        } else if (error.message.includes('User cancelled')) {
+          this.addDebugLog('info', '使用者取消了設備選擇')
+        } else {
+          this.addDebugLog('error', `錯誤詳情: ${error.stack || error}`)
+        }
+
+        this.isConnected = false
         throw error
       }
     },
@@ -196,7 +236,12 @@ export const useHeartRateStore = defineStore('heartRate', {
       this.currentHeartRate = heartRate
 
       // 解析傳感器接觸狀態
-      this.isContactDetected = (flags & 0x06) !== 0
+      const contactDetected = (flags & 0x06) !== 0
+      if (this.isContactDetected !== contactDetected) {
+        this.isContactDetected = contactDetected
+        this.addDebugLog(contactDetected ? 'success' : 'warning',
+          contactDetected ? '傳感器接觸良好' : '傳感器失去接觸')
+      }
 
       // 解析能量消耗（如存在）
       let offset = is16Bit ? 3 : 2

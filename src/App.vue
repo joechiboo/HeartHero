@@ -35,7 +35,7 @@
               </div>
 
               <button
-                @click="heartRateStore.connect()"
+                @click="handleConnect"
                 :disabled="heartRateStore.isReconnecting"
                 class="px-10 py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -49,11 +49,56 @@
               >
                 🎮 模擬模式（測試用）
               </button>
+
+              <!-- Debug 按鈕 -->
+              <button
+                @click="heartRateStore.toggleDebug()"
+                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold text-sm transition-all"
+              >
+                {{ heartRateStore.showDebug ? '🙈 隱藏' : '🐛 顯示' }} Debug
+              </button>
+            </div>
+          </div>
+
+          <!-- Debug 面板 -->
+          <div v-if="heartRateStore.showDebug" class="mt-4 space-y-4">
+            <!-- 連線狀態資訊 -->
+            <div class="bg-white rounded-xl shadow-lg p-4 text-xs">
+              <div class="font-bold text-gray-700 mb-2">🔗 連線狀態</div>
+              <div class="grid grid-cols-2 gap-2 text-gray-600">
+                <div>連線狀態: <span class="font-semibold" :class="heartRateStore.isConnected ? 'text-green-600' : 'text-red-600'">{{ heartRateStore.isConnected ? '已連線' : '未連線' }}</span></div>
+                <div>模式: <span class="font-semibold">{{ heartRateStore.isSimulationMode ? '模擬' : '實體設備' }}</span></div>
+                <div v-if="heartRateStore.device">設備名稱: <span class="font-semibold">{{ heartRateStore.device.name || '未命名' }}</span></div>
+                <div v-if="heartRateStore.device">設備 ID: <span class="font-semibold text-xs">{{ heartRateStore.device.id }}</span></div>
+                <div>傳感器: <span class="font-semibold" :class="heartRateStore.isContactDetected ? 'text-green-600' : 'text-orange-600'">{{ heartRateStore.isContactDetected ? '接觸良好' : '未接觸' }}</span></div>
+                <div v-if="heartRateStore.batteryLevel">電量: <span class="font-semibold">{{ heartRateStore.batteryLevel }}%</span></div>
+              </div>
+            </div>
+
+            <!-- Debug 控制台 -->
+            <div class="bg-gray-900 text-gray-100 rounded-xl shadow-lg p-4 text-xs max-h-64 overflow-y-auto font-mono">
+              <div class="font-bold mb-2 text-green-400">&gt; Debug Console</div>
+              <div v-if="heartRateStore.debugLogs.length === 0" class="text-gray-500">等待操作日誌...</div>
+              <div v-for="(log, index) in heartRateStore.debugLogs" :key="index" class="mb-1">
+                <span class="text-gray-500">{{ log.timestamp }}</span>
+                <span
+                  class="ml-2 px-1 py-0.5 rounded text-xs"
+                  :class="{
+                    'bg-blue-600': log.type === 'info',
+                    'bg-green-600': log.type === 'success',
+                    'bg-red-600': log.type === 'error',
+                    'bg-yellow-600': log.type === 'warning'
+                  }"
+                >
+                  {{ log.type.toUpperCase() }}
+                </span>
+                <span class="ml-2">{{ log.message }}</span>
+              </div>
             </div>
           </div>
 
           <!-- 說明 -->
-          <div class="text-center text-gray-500 text-sm">
+          <div class="text-center text-gray-500 text-sm mt-4">
             <p>支援標準 BLE Heart Rate Profile 設備</p>
             <p class="mt-2">模擬模式：無需心率帶，自動生成心率數據</p>
           </div>
@@ -103,4 +148,13 @@ import { useHeartRateStore } from './stores/heartRate'
 
 const currentView = ref('monitor') // 'monitor' | 'battle'
 const heartRateStore = useHeartRateStore()
+
+// 處理連接
+const handleConnect = async () => {
+  try {
+    await heartRateStore.connect()
+  } catch (error) {
+    alert(`連接失敗: ${error.message}`)
+  }
+}
 </script>

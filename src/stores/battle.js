@@ -49,68 +49,68 @@ export const useBattleStore = defineStore('battle', {
     // 待恢復的戰鬥（頁面重載時）
     pendingBattle: savedState.pendingBattle,
 
-    // 關卡定義
+    // 關卡定義（調整為更容易的難度）
     bosses: [
       {
         id: 1,
         name: '史萊姆',
         emoji: '🟢',
         health: 100,
-        healthMultiplier: 0.5, // 實際血量倍數
+        healthMultiplier: 0.3, // 降低血量倍數
         description: '新手魔王，輕鬆擊敗',
-        targetTime: 150, // 2.5 分鐘（秒）
-        stars: { gold: 120, silver: 150, bronze: 180 }
+        targetTime: 60, // 1 分鐘
+        stars: { gold: 45, silver: 60, bronze: 90 }
       },
       {
         id: 2,
         name: '哥布林',
         emoji: '👹',
         health: 100,
-        healthMultiplier: 0.75,
+        healthMultiplier: 0.5,
         description: '調皮的綠色妖怪',
-        targetTime: 225, // 3.75 分鐘
-        stars: { gold: 180, silver: 225, bronze: 270 }
+        targetTime: 120, // 2 分鐘
+        stars: { gold: 90, silver: 120, bronze: 150 }
       },
       {
         id: 3,
         name: '巨魔',
         emoji: '👺',
         health: 100,
-        healthMultiplier: 1.0,
+        healthMultiplier: 0.75,
         description: '力量強大的對手',
-        targetTime: 300, // 5 分鐘
-        stars: { gold: 240, silver: 300, bronze: 360 }
+        targetTime: 180, // 3 分鐘
+        stars: { gold: 150, silver: 180, bronze: 240 }
       },
       {
         id: 4,
         name: '火龍',
         emoji: '🐲',
         health: 100,
-        healthMultiplier: 1.5,
+        healthMultiplier: 1.0,
         description: '會噴火的巨龍',
-        targetTime: 450, // 7.5 分鐘
-        stars: { gold: 360, silver: 450, bronze: 540 }
+        targetTime: 300, // 5 分鐘
+        stars: { gold: 240, silver: 300, bronze: 360 }
       },
       {
         id: 5,
         name: '終極魔王',
         emoji: '👿',
         health: 100,
-        healthMultiplier: 2.0,
+        healthMultiplier: 1.5,
         description: '最強大的敵人',
-        targetTime: 600, // 10 分鐘
-        stars: { gold: 480, silver: 600, bronze: 720 }
+        targetTime: 420, // 7 分鐘
+        stars: { gold: 360, silver: 420, bronze: 480 }
       }
     ],
 
-    // 傷害倍數設定
+    // 傷害倍數設定（調整為更適合的心率範圍）
     damageMultipliers: {
-      rest: 1.0,     // 60-80 bpm
-      warmup: 1.5,   // 80-100 bpm
-      fatBurn: 2.0,  // 100-120 bpm
-      cardio: 3.0,   // 120-140 bpm
-      peak: 4.0,     // 140-160 bpm
-      danger: 5.0    // 160+ bpm
+      rest: 0.8,     // < 60 bpm（休息）
+      warmup: 1.5,   // 60-80 bpm（輕鬆）
+      fatBurn: 2.5,  // 80-100 bpm（適中）
+      cardio: 3.5,   // 100-120 bpm（有氧）
+      peak: 4.5,     // 120-140 bpm（高強度）
+      danger: 5.0    // 140+ bpm（極限）
     },
 
     // 語音播報設定
@@ -253,12 +253,12 @@ export const useBattleStore = defineStore('battle', {
         this.lastVoiceZone = currentZone
 
         const zoneMessages = {
-          rest: '休息中，準備好再衝刺！',
-          warmup: '進入藍色暖身區，開始攻擊！',
-          fatBurn: '進入綠色燃脂區，攻擊加速！',
-          cardio: '進入橙色有氧區，攻擊力加倍！',
-          peak: '進入紅色高強度區，全力爆發！',
-          danger: '衝刺！超高心率，火力全開！'
+          rest: '休息中，心率低於 60',
+          warmup: '輕鬆區，60 到 80，攻擊開始！',
+          fatBurn: '適中區，80 到 100，攻擊加速！',
+          cardio: '有氧區，100 到 120，火力增強！',
+          peak: '高強度區，120 到 140，全力爆發！',
+          danger: '極限區，超過 140，最大火力！'
         }
 
         if (zoneMessages[currentZone]) {

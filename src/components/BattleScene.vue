@@ -304,21 +304,96 @@
       </div>
     </div>
 
+    <!-- 恢復戰鬥提示對話框 -->
+    <div v-if="showResumePrompt" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border-2 border-blue-500 animate-scale-in">
+        <div class="text-6xl text-center mb-4">⚔️</div>
+        <h2 class="text-3xl font-bold text-white text-center mb-4">發現未完成的戰鬥</h2>
+        <p class="text-gray-300 text-center mb-8">是否要繼續上次的挑戰？</p>
+
+        <div class="flex gap-4">
+          <button
+            @click="handleDeclineResume"
+            class="flex-1 px-6 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-bold text-lg transition-all transform hover:scale-105 active:scale-95"
+          >
+            重新開始
+          </button>
+          <button
+            @click="handleResume"
+            class="flex-1 px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-all transform hover:scale-105 active:scale-95"
+          >
+            繼續戰鬥
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 螢幕常亮指示（右下角小圖示） -->
+    <div class="fixed bottom-4 right-4 z-40">
+      <div
+        class="px-3 py-2 rounded-full text-sm font-medium flex items-center gap-2"
+        :class="wakeLockActive ? 'bg-green-500 bg-opacity-80' : 'bg-yellow-500 bg-opacity-80'"
+      >
+        <span>{{ wakeLockActive ? '☀️' : '⚠️' }}</span>
+        <span>{{ wakeLockActive ? '螢幕常亮' : '螢幕可能休眠' }}</span>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useBattleStore } from '@/stores/battle'
 import { useHeartRateStore } from '@/stores/heartRate'
+import { useWakeLock } from '@/composables/useWakeLock'
 
 const battleStore = useBattleStore()
 const heartRateStore = useHeartRateStore()
+const { isSupported: wakeLockSupported, isActive: wakeLockActive, requestWakeLock, releaseWakeLock, setupVisibilityListener } = useWakeLock()
 
 const showVictory = ref(false)
 const showCancelConfirm = ref(false)
+const showResumePrompt = ref(false)
 const attackKey = ref(0)
 const bossHit = ref(false)
+
+// 頁面載入時啟用 Wake Lock
+onMounted(async () => {
+  // 啟用螢幕常亮
+  await requestWakeLock()
+  setupVisibilityListener()
+
+  // 檢查是否有待恢復的戰鬥
+  if (battleStore.hasPendingBattle()) {
+    showResumePrompt.value = true
+  }
+
+  // 頁面關閉/刷新前保存狀態
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
+onUnmounted(() => {
+  releaseWakeLock()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+// 頁面關閉前保存
+function handleBeforeUnload() {
+  battleStore.saveToStorage()
+}
+
+// 恢復戰鬥
+function handleResume() {
+  showResumePrompt.value = false
+  battleStore.resumeBattle()
+}
+
+// 不恢復戰鬥
+function handleDeclineResume() {
+  showResumePrompt.value = false
+  battleStore.clearPendingBattle()
+}
 
 // 攻擊動畫循環（每秒觸發一次攻擊）
 let attackInterval = null

@@ -23,16 +23,29 @@
             <p class="text-gray-600 mb-8">連接心率帶，開始你的冒險旅程！</p>
 
             <div class="flex flex-col gap-4 max-w-md mx-auto">
+              <!-- 重連中提示 -->
+              <div v-if="heartRateStore.isReconnecting" class="bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-xl p-4 mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="animate-spin text-2xl">⏳</div>
+                  <div>
+                    <p class="font-bold">正在重新連接...</p>
+                    <p class="text-sm">第 {{ heartRateStore.reconnectAttempts }} 次嘗試</p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 @click="heartRateStore.connect()"
-                class="px-10 py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                :disabled="heartRateStore.isReconnecting"
+                class="px-10 py-5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 🔗 連接心率帶
               </button>
 
               <button
                 @click="heartRateStore.startSimulation()"
-                class="px-10 py-5 bg-purple-500 hover:bg-purple-600 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                :disabled="heartRateStore.isReconnecting"
+                class="px-10 py-5 bg-purple-500 hover:bg-purple-600 text-white rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 🎮 模擬模式（測試用）
               </button>

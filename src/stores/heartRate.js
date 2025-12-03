@@ -26,7 +26,14 @@ export const useHeartRateStore = defineStore('heartRate', {
 
     // 模擬模式
     isSimulationMode: false,
-    simulationTimer: null
+    simulationTimer: null,
+
+    // 自動重連相關
+    autoReconnect: true,
+    isReconnecting: false,
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 5,
+    lastDeviceId: null
   }),
 
   getters: {
@@ -131,8 +138,11 @@ export const useHeartRateStore = defineStore('heartRate', {
 
         this.addDebugLog('success', `已選擇設備: ${this.device.name}`)
 
-        // 監聽斷開事件
-        this.device.addEventListener('gattserverdisconnected', this.handleDisconnect)
+        // 監聯斷開事件
+        this.device.addEventListener('gattserverdisconnected', this.handleDisconnect.bind(this))
+
+        // 保存設備 ID 供重連使用
+        this.lastDeviceId = this.device.id
 
         // 連接 GATT Server
         this.server = await this.device.gatt.connect()
@@ -177,8 +187,72 @@ export const useHeartRateStore = defineStore('heartRate', {
     // 處理斷開事件
     handleDisconnect() {
       this.isConnected = false
-      this.currentHeartRate = 0
       this.addDebugLog('warning', '設備已斷開')
+
+      // 如果啟用自動重連且有設備，嘗試重連
+      if (this.autoReconnect && this.device && !this.isSimulationMode) {
+        this.addDebugLog('info', '嘗試自動重新連接...')
+        this.attemptReconnect()
+      }
+    },
+
+    // 嘗試重新連接
+    async attemptReconnect() {
+      if (this.isReconnecting) return
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        this.addDebugLog('error', `重連失敗：已達最大嘗試次數 (${this.maxReconnectAttempts})`)
+        this.reconnectAttempts = 0
+        return
+      }
+
+      this.isReconnecting = true
+      this.reconnectAttempts++
+
+      const delay = Math.min(1000 * this.reconnectAttempts, 5000) // 延遲逐漸增加，最多 5 秒
+      this.addDebugLog('info', `第 ${this.reconnectAttempts} 次重連嘗試，${delay / 1000} 秒後開始...`)
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+
+      try {
+        if (!this.device || !this.device.gatt) {
+          throw new Error('設備不可用')
+        }
+
+        // 重新連接 GATT Server
+        this.server = await this.device.gatt.connect()
+        this.addDebugLog('success', '重新連接 GATT Server 成功')
+
+        // 重新獲取 Heart Rate Service
+        const service = await this.server.getPrimaryService('heart_rate')
+        const characteristic = await service.getCharacteristic('heart_rate_measurement')
+
+        // 重新啟動通知
+        await characteristic.startNotifications()
+        characteristic.addEventListener('characteristicvaluechanged', this.handleHeartRateChange.bind(this))
+
+        this.isConnected = true
+        this.isReconnecting = false
+        this.reconnectAttempts = 0
+        this.addDebugLog('success', '自動重連成功！')
+
+        // 重新獲取電池電量
+        this.getBatteryLevel()
+
+      } catch (error) {
+        this.isReconnecting = false
+        this.addDebugLog('error', `重連失敗: ${error.message}`)
+
+        // 繼續嘗試重連
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.attemptReconnect()
+        }
+      }
+    },
+
+    // 手動觸發重連
+    async reconnect() {
+      this.reconnectAttempts = 0
+      await this.attemptReconnect()
     },
 
     // 處理心率數據變化

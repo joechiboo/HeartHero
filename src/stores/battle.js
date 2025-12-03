@@ -1,6 +1,30 @@
 import { defineStore } from 'pinia'
 import { useHeartRateStore } from './heartRate'
 
+// localStorage 鍵名
+const STORAGE_KEY = 'hearthero_battle_state'
+
+// 從 localStorage 讀取保存的狀態
+function loadSavedState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const data = JSON.parse(saved)
+      return {
+        battleHistory: data.battleHistory || [],
+        savedBossHealth: data.savedBossHealth || {},
+        // 如果有進行中的戰鬥，恢復它
+        pendingBattle: data.pendingBattle || null
+      }
+    }
+  } catch (e) {
+    console.error('[Battle] 讀取存檔失敗:', e)
+  }
+  return { battleHistory: [], savedBossHealth: {}, pendingBattle: null }
+}
+
+const savedState = loadSavedState()
+
 export const useBattleStore = defineStore('battle', {
   state: () => ({
     // 戰鬥狀態
@@ -17,10 +41,13 @@ export const useBattleStore = defineStore('battle', {
     totalDamage: 0,
     averageHeartRate: 0,
     maxHeartRate: 0,
-    battleHistory: [],
+    battleHistory: savedState.battleHistory,
 
     // 保留的魔王血量（放棄時保存）
-    savedBossHealth: {},
+    savedBossHealth: savedState.savedBossHealth,
+
+    // 待恢復的戰鬥（頁面重載時）
+    pendingBattle: savedState.pendingBattle,
 
     // 關卡定義
     bosses: [
@@ -209,6 +236,11 @@ export const useBattleStore = defineStore('battle', {
         if (this.isBossDefeated) {
           this.endBattle()
         }
+
+        // 每 10 秒自動保存
+        if (this.battleDuration % 10 === 0) {
+          this.saveToStorage()
+        }
       }, 1000)
     },
 
@@ -282,6 +314,9 @@ export const useBattleStore = defineStore('battle', {
       // 擊敗魔王後，清除保存的血量
       delete this.savedBossHealth[this.currentBoss.id]
 
+      // 保存到 localStorage
+      this.saveToStorage()
+
       // 語音播報勝利
       const stars = this.earnedStars
       const starText = '⭐'.repeat(stars)
@@ -301,6 +336,9 @@ export const useBattleStore = defineStore('battle', {
       }
 
       this.isBattleActive = false
+
+      // 保存到 localStorage
+      this.saveToStorage()
     },
 
     // 語音播報
@@ -330,6 +368,90 @@ export const useBattleStore = defineStore('battle', {
     // 切換語音
     toggleVoice() {
       this.voiceEnabled = !this.voiceEnabled
+    },
+
+    // 保存狀態到 localStorage
+    saveToStorage() {
+      try {
+        const dataToSave = {
+          battleHistory: this.battleHistory,
+          savedBossHealth: this.savedBossHealth,
+          pendingBattle: null
+        }
+
+        // 如果正在戰鬥，保存戰鬥狀態
+        if (this.isBattleActive && this.currentBoss) {
+          dataToSave.pendingBattle = {
+            bossId: this.currentBoss.id,
+            bossHealth: this.bossHealth,
+            battleDuration: this.battleDuration,
+            totalDamage: this.totalDamage,
+            maxHeartRate: this.maxHeartRate,
+            timestamp: Date.now()
+          }
+        }
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave))
+        console.log('[Battle] 已保存遊戲狀態')
+      } catch (e) {
+        console.error('[Battle] 保存失敗:', e)
+      }
+    },
+
+    // 恢復戰鬥（頁面重載後）
+    resumeBattle() {
+      if (!this.pendingBattle) return false
+
+      const pending = this.pendingBattle
+      const boss = this.bosses.find(b => b.id === pending.bossId)
+
+      if (!boss) {
+        this.pendingBattle = null
+        return false
+      }
+
+      // 檢查是否過期（超過 30 分鐘不恢復）
+      const timeSinceStart = Date.now() - pending.timestamp
+      if (timeSinceStart > 30 * 60 * 1000) {
+        this.addDebugLog('info', '戰鬥記錄已過期，不恢復')
+        // 保存血量讓玩家可以繼續
+        this.savedBossHealth[pending.bossId] = pending.bossHealth
+        this.pendingBattle = null
+        this.saveToStorage()
+        return false
+      }
+
+      // 恢復戰鬥狀態
+      this.currentBoss = boss
+      this.bossHealth = pending.bossHealth
+      this.bossMaxHealth = boss.health
+      this.totalDamage = pending.totalDamage
+      this.maxHeartRate = pending.maxHeartRate
+      this.battleDuration = pending.battleDuration
+      this.battleStartTime = Date.now() - (pending.battleDuration * 1000)
+      this.isBattleActive = true
+      this.lastHealthMilestone = Math.ceil(this.bossHealth / 25) * 25
+
+      this.pendingBattle = null
+      this.speak(`歡迎回來！繼續挑戰 ${boss.name}！`)
+      this.startBattleLoop()
+
+      return true
+    },
+
+    // 檢查是否有待恢復的戰鬥
+    hasPendingBattle() {
+      return this.pendingBattle !== null
+    },
+
+    // 清除待恢復的戰鬥（玩家選擇不恢復）
+    clearPendingBattle() {
+      if (this.pendingBattle) {
+        // 保存血量
+        this.savedBossHealth[this.pendingBattle.bossId] = this.pendingBattle.bossHealth
+        this.pendingBattle = null
+        this.saveToStorage()
+      }
     }
   }
 })

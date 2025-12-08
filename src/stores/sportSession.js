@@ -96,6 +96,7 @@ export const useSportSessionStore = defineStore('sportSession', {
     currentSession: null,
     isRecording: false,
     recordingStartTime: null,
+    elapsedSeconds: 0, // 響應式的經過秒數
 
     // 回合偵測狀態機
     roundState: 'idle', // 'idle' | 'maybe_active' | 'active' | 'maybe_rest' | 'rest'
@@ -120,15 +121,14 @@ export const useSportSessionStore = defineStore('sportSession', {
   }),
 
   getters: {
-    // 當前記錄時長（秒）
+    // 當前記錄時長（秒）- 使用響應式的 elapsedSeconds
     recordingDuration() {
-      if (!this.recordingStartTime) return 0
-      return Math.floor((Date.now() - this.recordingStartTime) / 1000)
+      return this.elapsedSeconds
     },
 
     // 格式化記錄時長
     formattedDuration() {
-      const seconds = this.recordingDuration
+      const seconds = this.elapsedSeconds
       const hours = Math.floor(seconds / 3600)
       const minutes = Math.floor((seconds % 3600) / 60)
       const secs = seconds % 60
@@ -222,6 +222,11 @@ export const useSportSessionStore = defineStore('sportSession', {
      */
     recordSample() {
       if (!this.isRecording || !this.currentSession) return
+
+      // 更新經過秒數（響應式）
+      if (this.recordingStartTime) {
+        this.elapsedSeconds = Math.floor((Date.now() - this.recordingStartTime) / 1000)
+      }
 
       const heartRateStore = useHeartRateStore()
       const hr = heartRateStore.currentHeartRate
@@ -418,6 +423,7 @@ export const useSportSessionStore = defineStore('sportSession', {
       // 重置狀態
       this.isRecording = false
       this.recordingStartTime = null
+      this.elapsedSeconds = 0
       this.roundState = 'idle'
       this.currentSession = null
 
@@ -674,6 +680,7 @@ export const useSportSessionStore = defineStore('sportSession', {
 
       this.isRecording = false
       this.recordingStartTime = null
+      this.elapsedSeconds = 0
       this.roundState = 'idle'
       this.currentSession = null
       this.currentRound = null

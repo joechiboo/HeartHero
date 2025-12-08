@@ -2,6 +2,9 @@
   <!-- 戰鬥模式 -->
   <BattleScene v-if="currentView === 'battle'" @back="currentView = 'monitor'" />
 
+  <!-- 運動日誌模式 -->
+  <SportSessionPage v-else-if="currentView === 'sport'" @back="currentView = 'monitor'" />
+
   <!-- 心率監測模式 -->
   <div v-else class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
     <div class="max-w-4xl mx-auto">
@@ -106,18 +109,33 @@
 
         <!-- 已連接：顯示進入遊戲按鈕 -->
         <div v-else class="text-center">
-          <!-- 大型進入遊戲按鈕 -->
-          <div class="bg-white rounded-3xl shadow-2xl p-12 mb-8">
-            <div class="text-8xl mb-6">🎮</div>
-            <h2 class="text-3xl font-bold text-gray-800 mb-4">開始冒險！</h2>
-            <p class="text-gray-600 mb-8">你的心率是最強武器</p>
+          <!-- 模式選擇 -->
+          <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <!-- 打怪模式 -->
+            <div class="bg-white rounded-3xl shadow-2xl p-8 text-center">
+              <div class="text-6xl mb-4">⚔️</div>
+              <h2 class="text-2xl font-bold text-gray-800 mb-2">打怪模式</h2>
+              <p class="text-gray-600 mb-6">心率越高攻擊力越強</p>
+              <button
+                @click="currentView = 'battle'"
+                class="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-2xl font-bold text-xl shadow-xl transition-all transform hover:scale-105 active:scale-95"
+              >
+                進入戰鬥
+              </button>
+            </div>
 
-            <button
-              @click="currentView = 'battle'"
-              class="px-16 py-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-2xl font-bold text-2xl shadow-2xl hover:shadow-3xl transition-all transform hover:scale-105 active:scale-95"
-            >
-              ⚔️ 進入打怪模式
-            </button>
+            <!-- 運動日誌 -->
+            <div class="bg-white rounded-3xl shadow-2xl p-8 text-center">
+              <div class="text-6xl mb-4">🏀</div>
+              <h2 class="text-2xl font-bold text-gray-800 mb-2">運動日誌</h2>
+              <p class="text-gray-600 mb-6">背景記錄 + 事後分析</p>
+              <button
+                @click="currentView = 'sport'"
+                class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl font-bold text-xl shadow-xl transition-all transform hover:scale-105 active:scale-95"
+              >
+                開始記錄
+              </button>
+            </div>
           </div>
 
           <!-- 心率監測卡片（縮小版） -->
@@ -144,9 +162,10 @@
 import { ref } from 'vue'
 import HeartRateMonitor from './components/HeartRateMonitor.vue'
 import BattleScene from './components/BattleScene.vue'
+import SportSessionPage from './components/SportSessionPage.vue'
 import { useHeartRateStore } from './stores/heartRate'
 
-const currentView = ref('monitor') // 'monitor' | 'battle'
+const currentView = ref('monitor') // 'monitor' | 'battle' | 'sport'
 const heartRateStore = useHeartRateStore()
 
 // 處理連接

@@ -65,6 +65,9 @@
           <div class="text-center text-gray-500 text-sm mb-8">
             <p>📱 你可以將手機放入包包</p>
             <p>系統會自動記錄心率並偵測上場/休息回合</p>
+            <p class="mt-2" :class="wakeLockActive ? 'text-green-600' : 'text-yellow-600'">
+              {{ wakeLockActive ? '☀️ 螢幕常亮已啟用' : '⚠️ 螢幕可能會休眠' }}
+            </p>
           </div>
 
           <!-- 控制按鈕 -->
@@ -183,15 +186,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSportSessionStore } from '../stores/sportSession'
 import { useHeartRateStore } from '../stores/heartRate'
+import { useWakeLock } from '../composables/useWakeLock'
 import SessionReport from './SessionReport.vue'
 
 const emit = defineEmits(['back'])
 
 const sportSessionStore = useSportSessionStore()
 const heartRateStore = useHeartRateStore()
+const { isActive: wakeLockActive, requestWakeLock, releaseWakeLock, setupVisibilityListener } = useWakeLock()
 
 const selectedSport = ref('basketball')
 const showReport = ref(false)
@@ -223,24 +228,41 @@ const roundStateClass = computed(() => {
 
 // 開始記錄
 async function startRecording() {
+  // 啟用螢幕常亮
+  await requestWakeLock()
+  setupVisibilityListener()
+
   await sportSessionStore.startRecording(selectedSport.value)
 }
 
 // 停止記錄
 async function stopRecording() {
-  const session = await sportSessionStore.stopRecording()
-  if (session) {
-    reportSession.value = session
-    showReport.value = true
+  try {
+    releaseWakeLock()
+    const session = await sportSessionStore.stopRecording()
+    console.log('[SportSessionPage] stopRecording result:', session)
+    if (session) {
+      reportSession.value = session
+      showReport.value = true
+    }
+  } catch (error) {
+    console.error('[SportSessionPage] stopRecording error:', error)
+    alert('完成運動時發生錯誤: ' + error.message)
   }
 }
 
 // 取消記錄
 function cancelRecording() {
   if (confirm('確定要取消記錄嗎？此次運動資料將不會保存。')) {
+    releaseWakeLock()
     sportSessionStore.cancelRecording()
   }
 }
+
+// 組件卸載時釋放 Wake Lock
+onUnmounted(() => {
+  releaseWakeLock()
+})
 
 // 查看報告
 function viewReport(session) {
